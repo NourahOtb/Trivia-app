@@ -31,10 +31,10 @@ npm run deploy            # build and push the site to the Trivia-website reposi
 
 - The built site is kept in its own repository, [NourahOtb/Trivia-website](https://github.com/NourahOtb/Trivia-website)
   (branch `main`). Only the finished files live there; edit the code here and run `npm run deploy`.
-- Published address: https://nourahotb.github.io/Trivia-website/
-- The site lives under `/Trivia-website`, set by `experiments.baseUrl` in `app.json`.
-  If that repository is renamed, change this value and the `deploy` script to match.
-- One-time setup on GitHub (in Trivia-website): **Settings → Pages → Deploy from a branch → `main` / root**.
+- Live address (Vercel): https://trivia-website-eta.vercel.app/
+  Vercel watches the Trivia-website repository and republishes automatically after each `npm run deploy`.
+- The site is built to run from the root of its address (no `experiments.baseUrl`). To host it under a
+  sub-path instead (e.g. GitHub Pages at `/Trivia-website`), set `experiments.baseUrl` in `app.json`.
 - On a computer you can play with the keyboard: **1–4** or **A–D** to answer, **F** for 50/50,
   **Enter** to start and to go to the next question.
 
