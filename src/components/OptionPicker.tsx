@@ -14,8 +14,10 @@ interface OptionPickerProps<T extends string> {
   options: readonly PickerOption<T>[];
   selectedId: T;
   onSelect: (id: T) => void;
-  /** How many options per row on phones; wide screens get one more. */
+  /** How many options per row on phones. */
   columns?: number;
+  /** How many per row on tablets and desktop browsers. */
+  wideColumns?: number;
 }
 
 /** A grid of tappable chips where exactly one can be selected. Styled for the purple start screen. */
@@ -25,9 +27,10 @@ export function OptionPicker<T extends string>({
   selectedId,
   onSelect,
   columns = 2,
+  wideColumns = columns + 1,
 }: OptionPickerProps<T>) {
   const { font, isWide } = useResponsive();
-  const perRow = isWide ? columns + 1 : columns;
+  const perRow = isWide ? wideColumns : columns;
   const basis = `${100 / perRow - 3}%` as const;
 
   return (

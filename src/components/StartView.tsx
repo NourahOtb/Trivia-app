@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useResponsive } from '../hooks/useResponsive';
 import { colors, gradients, MAX_CONTENT_WIDTH, radius, spacing } from '../theme';
 
@@ -19,6 +20,7 @@ interface StartViewProps {
 
 export function StartView({ title, subtitle, rules, children, onStart }: StartViewProps) {
   const { font } = useResponsive();
+  useKeyboardShortcuts({ enter: onStart });
 
   return (
     <LinearGradient colors={gradients.hero} style={styles.fill}>

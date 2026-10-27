@@ -19,6 +19,25 @@ npx expo start
 Scan the QR code with the Expo Go app (Android) or the Camera app (iOS).
 Your phone and computer must be on the same Wi‑Fi.
 
+## Website version
+
+The same code runs as a website (desktop and phone browsers).
+
+```bash
+npx expo start --web      # try it locally
+npm run build:web         # build the static site into dist/
+npm run deploy            # build and push the site to the Trivia-website repository
+```
+
+- The built site is kept in its own repository, [NourahOtb/Trivia-website](https://github.com/NourahOtb/Trivia-website)
+  (branch `main`). Only the finished files live there; edit the code here and run `npm run deploy`.
+- Published address: https://nourahotb.github.io/Trivia-website/
+- The site lives under `/Trivia-website`, set by `experiments.baseUrl` in `app.json`.
+  If that repository is renamed, change this value and the `deploy` script to match.
+- One-time setup on GitHub (in Trivia-website): **Settings → Pages → Deploy from a branch → `main` / root**.
+- On a computer you can play with the keyboard: **1–4** or **A–D** to answer, **F** for 50/50,
+  **Enter** to start and to go to the next question.
+
 ## Project structure
 
 ```
@@ -32,6 +51,7 @@ src/
                              ErrorBoundary
   hooks/useQuiz.ts           Game state machine (loading / error / empty / playing / finished)
   hooks/useCountdown.ts      Accurate per-question countdown
+  hooks/useKeyboardShortcuts.ts  Keyboard controls (website only)
   hooks/useResponsive.ts     Screen-size helpers (font scaling, wide layouts)
   services/questionService.ts  Open Trivia DB client: timeout, auto-retry on "too many requests",
                              decoding, validation, and spreading the right answer across A–D

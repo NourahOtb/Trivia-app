@@ -19,7 +19,16 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "name": "Zwara's Trivia",
+      "shortName": "Zwara's Trivia",
+      "description": "Family trivia for every gathering: pick a category and difficulty, beat the clock, and use your 50/50 wisely.",
+      "themeColor": "#6D28D9",
+      "backgroundColor": "#F5F0FF"
+    },
+    "experiments": {
+      "baseUrl": "/Trivia-website"
     }
   }
 }

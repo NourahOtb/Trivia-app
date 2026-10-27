@@ -1,12 +1,21 @@
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { FeedbackBanner, LifelineButton, PrimaryButton, QuestionCard, TimerBar } from '../components';
 import { useCountdown } from '../hooks/useCountdown';
+import { ShortcutMap, useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { isAnswered } from '../hooks/useQuiz';
-import { spacing } from '../theme';
+import { useResponsive } from '../hooks/useResponsive';
+import { colors, spacing } from '../theme';
 import { AnswerResult, PlayingState } from '../types/quiz';
 
 export const SECONDS_PER_QUESTION = 15;
+
+const ANSWER_KEYS = [
+  ['1', 'a'],
+  ['2', 'b'],
+  ['3', 'c'],
+  ['4', 'd'],
+];
 
 interface PlayingViewProps {
   state: PlayingState;
@@ -27,6 +36,16 @@ export function PlayingView({ state, onAnswer, onTimeUp, onFiftyFifty, onNext }:
     onExpire: onTimeUp,
   });
 
+  const { font, isWide } = useResponsive();
+
+  // Website only: answer with 1–4 or A–D, F for 50/50, Enter for the next question.
+  const shortcuts: ShortcutMap = { f: onFiftyFifty };
+  question.options.forEach((option, i) => {
+    for (const key of ANSWER_KEYS[i] ?? []) shortcuts[key] = () => onAnswer(option);
+  });
+  if (answered) shortcuts.enter = onNext;
+  useKeyboardShortcuts(shortcuts);
+
   const result: AnswerResult = state.timedOut
     ? 'timeout'
     : state.selectedAnswer === question.correctAnswer
@@ -45,6 +64,12 @@ export function PlayingView({ state, onAnswer, onTimeUp, onFiftyFifty, onNext }:
           onPress={onFiftyFifty}
         />
       </View>
+
+      {Platform.OS === 'web' && isWide && (
+        <Text style={[styles.hint, { fontSize: font(12) }]}>
+          Keyboard: 1–4 or A–D to answer · F for 50/50 · Enter for next
+        </Text>
+      )}
 
       <QuestionCard
         question={question}
@@ -71,6 +96,11 @@ export function PlayingView({ state, onAnswer, onTimeUp, onFiftyFifty, onNext }:
 const styles = StyleSheet.create({
   container: {
     gap: spacing.md,
+  },
+  hint: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: -spacing.sm,
   },
   toolbar: {
     flexDirection: 'row',

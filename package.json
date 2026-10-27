@@ -14,13 +14,17 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "gh-pages": "^6.3.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:web": "expo export -p web",
+    "predeploy": "expo export -p web",
+    "deploy": "gh-pages --nojekyll -d dist -b main -r git@github.com:NourahOtb/Trivia-website.git -m \"Update website\""
   },
   "private": true
 }

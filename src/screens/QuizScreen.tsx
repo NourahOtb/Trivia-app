@@ -61,6 +61,7 @@ export function QuizScreen() {
         <OptionPicker
           title="Difficulty"
           options={DIFFICULTIES}
+          wideColumns={4}
           selectedId={choice.difficulty}
           onSelect={(difficulty) => setChoice((c) => ({ ...c, difficulty }))}
         />
