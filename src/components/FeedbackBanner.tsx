@@ -2,29 +2,32 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useResponsive } from '../hooks/useResponsive';
 import { colors, radius, spacing } from '../theme';
+import { AnswerResult } from '../types/quiz';
 
 interface FeedbackBannerProps {
-  isCorrect: boolean;
+  result: AnswerResult;
   correctAnswer: string;
   funFact?: string;
 }
 
-/** Shown right after a tap so everyone in the room sees the result. */
-export function FeedbackBanner({ isCorrect, correctAnswer, funFact }: FeedbackBannerProps) {
+const tones: Record<AnswerResult, { title: string; bg: string; border: string; text: string }> = {
+  correct: { title: '🎉 Correct!', bg: colors.correctBg, border: colors.correct, text: colors.correct },
+  wrong: { title: '❌ Wrong!', bg: colors.wrongBg, border: colors.wrong, text: colors.wrong },
+  timeout: { title: "⏰ Time's up!", bg: colors.warningBg, border: colors.warning, text: colors.warning },
+};
+
+/** Shown right after a tap (or when time runs out) so everyone in the room sees the result. */
+export function FeedbackBanner({ result, correctAnswer, funFact }: FeedbackBannerProps) {
   const { font } = useResponsive();
-  const tone = isCorrect
-    ? { bg: colors.correctBg, border: colors.correct, text: colors.correct }
-    : { bg: colors.wrongBg, border: colors.wrong, text: colors.wrong };
+  const tone = tones[result];
 
   return (
     <View
       accessibilityLiveRegion="polite"
       style={[styles.banner, { backgroundColor: tone.bg, borderColor: tone.border }]}
     >
-      <Text style={[styles.title, { color: tone.text, fontSize: font(20) }]}>
-        {isCorrect ? '🎉 Correct!' : '❌ Wrong!'}
-      </Text>
-      {!isCorrect && (
+      <Text style={[styles.title, { color: tone.text, fontSize: font(20) }]}>{tone.title}</Text>
+      {result !== 'correct' && (
         <Text style={[styles.body, { fontSize: font(15) }]}>
           The right answer is <Text style={styles.bold}>{correctAnswer}</Text>.
         </Text>

@@ -1,19 +1,28 @@
-// Palette inspired by Kuwait's flag (green, white, red, black) with warm desert neutrals.
+// Purple theme. Green/red stay for right/wrong so results are unmistakable.
 export const colors = {
-  background: '#F6F1E7',
+  background: '#F5F0FF',
   surface: '#FFFFFF',
-  primary: '#007A3D',
-  primaryDark: '#005C2E',
+  primary: '#6D28D9',
+  primaryDark: '#4C1D95',
+  primaryLight: '#EDE4FF',
   onPrimary: '#FFFFFF',
-  text: '#1A1A1A',
-  textMuted: '#5C5A55',
-  border: '#E2DBCB',
-  correct: '#1E8E3E',
-  correctBg: '#E3F5E8',
-  wrong: '#CE1126',
-  wrongBg: '#FCE4E7',
-  dimmed: '#B5B0A6',
+  accent: '#FBBF24',
+  text: '#1F1433',
+  textMuted: '#6B6080',
+  border: '#E3D8F5',
+  correct: '#15803D',
+  correctBg: '#DCFCE7',
+  wrong: '#DC2626',
+  wrongBg: '#FEE2E2',
+  warning: '#EA580C',
+  warningBg: '#FFEDD5',
+  dimmed: '#B9AFCB',
 } as const;
+
+/** Start screen background, top to bottom. */
+export const gradients = {
+  hero: ['#3B0764', '#6D28D9', '#9333EA'] as const,
+};
 
 export const spacing = {
   xs: 4,

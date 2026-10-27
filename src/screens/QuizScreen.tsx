@@ -1,26 +1,38 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  FeedbackBanner,
-  PrimaryButton,
-  QuestionCard,
-  ResultView,
-  ScoreBar,
-  StatusView,
-} from '../components';
+import { PrimaryButton, ResultView, ScoreBar, StartView, StatusView } from '../components';
 import { useQuiz } from '../hooks/useQuiz';
 import { useResponsive } from '../hooks/useResponsive';
 import { colors, MAX_CONTENT_WIDTH, spacing } from '../theme';
+import { PlayingView, SECONDS_PER_QUESTION } from './PlayingView';
 
+const APP_NAME = "Zwara's Trivia";
 const QUESTION_COUNT = 5;
 
+const RULES = [
+  { icon: '🔬', text: `${QUESTION_COUNT} Science & Nature questions` },
+  { icon: '⏳', text: `${SECONDS_PER_QUESTION} seconds for each question` },
+  { icon: '✂️', text: '50/50 once per game: removes two wrong answers' },
+];
+
 export function QuizScreen() {
-  const { state, answer, next, restart } = useQuiz({
+  const { state, answer, timeUp, fiftyFifty, next, start } = useQuiz({
     category: 'science-nature',
     questionCount: QUESTION_COUNT,
   });
   const { font } = useResponsive();
+
+  if (state.status === 'start') {
+    return (
+      <StartView
+        title={APP_NAME}
+        subtitle="Family trivia for every gathering"
+        rules={RULES}
+        onStart={start}
+      />
+    );
+  }
 
   const renderBody = () => {
     switch (state.status) {
@@ -40,7 +52,7 @@ export function QuizScreen() {
       case 'error':
         return (
           <StatusView icon="⚠️" title="Couldn't load the questions" message={state.message}>
-            <PrimaryButton title="Try again" onPress={restart} />
+            <PrimaryButton title="Try again" onPress={start} />
           </StatusView>
         );
 
@@ -51,39 +63,25 @@ export function QuizScreen() {
             title="No questions right now"
             message="The question server didn't send any questions this time. Please try again."
           >
-            <PrimaryButton title="Try again" onPress={restart} />
+            <PrimaryButton title="Try again" onPress={start} />
           </StatusView>
         );
 
       case 'finished':
         return (
-          <ResultView score={state.score} total={state.questions.length} onPlayAgain={restart} />
+          <ResultView score={state.score} total={state.questions.length} onPlayAgain={start} />
         );
 
-      case 'playing': {
-        const question = state.questions[state.index];
-        const answered = state.selectedAnswer !== null;
-        const isLast = state.index === state.questions.length - 1;
+      case 'playing':
         return (
-          <View style={styles.playing}>
-            <QuestionCard
-              question={question}
-              selectedAnswer={state.selectedAnswer}
-              onAnswer={answer}
-            />
-            {answered && (
-              <>
-                <FeedbackBanner
-                  isCorrect={state.selectedAnswer === question.correctAnswer}
-                  correctAnswer={question.correctAnswer}
-                  funFact={question.funFact}
-                />
-                <PrimaryButton title={isLast ? 'See final score' : 'Next question'} onPress={next} />
-              </>
-            )}
-          </View>
+          <PlayingView
+            state={state}
+            onAnswer={answer}
+            onTimeUp={timeUp}
+            onFiftyFifty={fiftyFifty}
+            onNext={next}
+          />
         );
-      }
     }
   };
 
@@ -91,8 +89,8 @@ export function QuizScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.column}>
         <View style={styles.header}>
-          <Text style={[styles.title, { fontSize: font(24) }]}>🔬 Science & Nature</Text>
-          <Text style={[styles.subtitle, { fontSize: font(14) }]}>Family Trivia Night</Text>
+          <Text style={[styles.title, { fontSize: font(26) }]}>🔮 {APP_NAME}</Text>
+          <Text style={[styles.subtitle, { fontSize: font(14) }]}>Science & Nature</Text>
         </View>
 
         {/* Kept outside the scroll view so the score is always visible. */}
@@ -131,7 +129,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.primary,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   subtitle: {
     color: colors.textMuted,
@@ -144,8 +142,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: spacing.lg,
-  },
-  playing: {
-    gap: spacing.md,
   },
 });

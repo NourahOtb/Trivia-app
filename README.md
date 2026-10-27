@@ -1,8 +1,10 @@
-# Family Trivia — Science & Nature
+# Zwara's Trivia — Science & Nature
 
 A one-screen trivia game for family gatherings in Kuwait, built with React Native and Expo.
 Each round fetches 5 fresh Science & Nature questions from [Open Trivia DB](https://opentdb.com), shows right/wrong
 after every tap, keeps the score visible, and ends with a final score and a **Play again** button.
+It opens on a purple start screen, gives 15 seconds per question (running out counts as wrong and moves on),
+and offers one 50/50 per game that removes two wrong answers.
 
 ## Run it on your phone (Expo Go)
 
@@ -21,10 +23,13 @@ Your phone and computer must be on the same Wi‑Fi.
 ```
 App.tsx                      Root: safe-area provider + error boundary
 src/
-  screens/QuizScreen.tsx     The single game screen (loading / error / playing / finished)
-  components/                Reusable UI: QuestionCard, AnswerButton, ScoreBar,
-                             FeedbackBanner, PrimaryButton, StatusView, ResultView, ErrorBoundary
+  screens/QuizScreen.tsx     The game screen (start / loading / error / empty / playing / finished)
+  screens/PlayingView.tsx    One question: timer, 50/50, answers, feedback
+  components/                Reusable UI: StartView, QuestionCard, AnswerButton, ScoreBar, TimerBar,
+                             LifelineButton, FeedbackBanner, PrimaryButton, StatusView, ResultView,
+                             ErrorBoundary
   hooks/useQuiz.ts           Game state machine (loading / error / empty / playing / finished)
+  hooks/useCountdown.ts      Accurate per-question countdown
   hooks/useResponsive.ts     Screen-size helpers (font scaling, wide layouts)
   services/questionService.ts  Open Trivia DB client: timeout, auto-retry on "too many requests",
                              decoding, validation, and spreading the right answer across A–D

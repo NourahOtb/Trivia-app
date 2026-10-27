@@ -61,14 +61,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   track: {
-    height: 8,
+    height: 6,
     borderRadius: radius.pill,
     backgroundColor: colors.border,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderRadius: radius.pill,
   },
 });

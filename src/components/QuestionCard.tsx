@@ -8,21 +8,37 @@ import { AnswerButton } from './AnswerButton';
 interface QuestionCardProps {
   question: Question;
   selectedAnswer: string | null;
+  /** True once the question is over (answered or timed out). */
+  revealed: boolean;
+  /** Options taken away by 50/50. */
+  hiddenAnswers: string[];
   onAnswer: (answer: string) => void;
 }
 
 const MARKERS = ['A', 'B', 'C', 'D'];
 
-function getStatus(option: string, question: Question, selected: string | null): AnswerStatus {
-  if (selected === null) return 'idle';
+function getStatus(
+  option: string,
+  question: Question,
+  selected: string | null,
+  revealed: boolean,
+  hidden: string[],
+): AnswerStatus {
+  if (hidden.includes(option)) return 'removed';
+  if (!revealed) return 'idle';
   if (option === question.correctAnswer) return 'correct';
   if (option === selected) return 'wrong';
   return 'dimmed';
 }
 
-export function QuestionCard({ question, selectedAnswer, onAnswer }: QuestionCardProps) {
+export function QuestionCard({
+  question,
+  selectedAnswer,
+  revealed,
+  hiddenAnswers,
+  onAnswer,
+}: QuestionCardProps) {
   const { font, isWide } = useResponsive();
-  const answered = selectedAnswer !== null;
 
   return (
     <View style={styles.card}>
@@ -31,17 +47,20 @@ export function QuestionCard({ question, selectedAnswer, onAnswer }: QuestionCar
       </Text>
 
       <View style={[styles.options, isWide && styles.optionsGrid]}>
-        {question.options.map((option, i) => (
-          <View key={option} style={isWide ? styles.gridItem : undefined}>
-            <AnswerButton
-              label={option}
-              marker={MARKERS[i]}
-              status={getStatus(option, question, selectedAnswer)}
-              disabled={answered}
-              onPress={onAnswer}
-            />
-          </View>
-        ))}
+        {question.options.map((option, i) => {
+          const status = getStatus(option, question, selectedAnswer, revealed, hiddenAnswers);
+          return (
+            <View key={option} style={isWide ? styles.gridItem : undefined}>
+              <AnswerButton
+                label={option}
+                marker={MARKERS[i]}
+                status={status}
+                disabled={revealed || status === 'removed'}
+                onPress={onAnswer}
+              />
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -53,11 +72,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.lg,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowColor: colors.primaryDark,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   prompt: {
     color: colors.text,

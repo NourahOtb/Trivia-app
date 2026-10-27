@@ -19,12 +19,20 @@ const statusStyles: Record<AnswerStatus, { bg: string; border: string; text: str
   correct: { bg: colors.correctBg, border: colors.correct, text: colors.correct },
   wrong: { bg: colors.wrongBg, border: colors.wrong, text: colors.wrong },
   dimmed: { bg: colors.surface, border: colors.border, text: colors.dimmed },
+  removed: { bg: colors.background, border: colors.border, text: colors.dimmed },
 };
 
 // Icons as well as colour, so results are clear for colour-blind players too.
 const statusIcon: Partial<Record<AnswerStatus, string>> = {
   correct: '✓',
   wrong: '✗',
+  removed: '–',
+};
+
+const statusSuffix: Partial<Record<AnswerStatus, string>> = {
+  correct: ', correct',
+  wrong: ', wrong',
+  removed: ', removed by 50/50',
 };
 
 function AnswerButtonBase({ label, marker, status, disabled, onPress }: AnswerButtonProps) {
@@ -35,13 +43,14 @@ function AnswerButtonBase({ label, marker, status, disabled, onPress }: AnswerBu
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}${status === 'correct' ? ', correct' : status === 'wrong' ? ', wrong' : ''}`}
+      accessibilityLabel={`${label}${statusSuffix[status] ?? ''}`}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={() => onPress(label)}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: palette.bg, borderColor: palette.border },
+        status === 'removed' && styles.removed,
         pressed && !disabled && styles.pressed,
       ]}
     >
@@ -50,7 +59,15 @@ function AnswerButtonBase({ label, marker, status, disabled, onPress }: AnswerBu
           {icon ?? marker}
         </Text>
       </View>
-      <Text style={[styles.label, { color: palette.text, fontSize: font(17) }]}>{label}</Text>
+      <Text
+        style={[
+          styles.label,
+          { color: palette.text, fontSize: font(17) },
+          status === 'removed' && styles.removedLabel,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -86,5 +103,12 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     fontWeight: '600',
+  },
+  removed: {
+    borderStyle: 'dashed',
+    opacity: 0.6,
+  },
+  removedLabel: {
+    textDecorationLine: 'line-through',
   },
 });
