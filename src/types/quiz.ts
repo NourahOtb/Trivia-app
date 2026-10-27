@@ -1,8 +1,11 @@
 export type Category = 'science-nature';
 
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
 export interface Question {
   id: string;
   category: Category;
+  difficulty?: Difficulty;
   prompt: string;
   /** Exactly four options; `correctAnswer` must be one of them. */
   options: string[];
@@ -12,8 +15,10 @@ export interface Question {
 }
 
 export type QuizState =
-  | { status: 'loading' }
+  /** `retryInSeconds` is set while waiting to retry after "too many requests". */
+  | { status: 'loading'; retryInSeconds?: number }
   | { status: 'error'; message: string }
+  | { status: 'empty' }
   | {
       status: 'playing';
       questions: Question[];

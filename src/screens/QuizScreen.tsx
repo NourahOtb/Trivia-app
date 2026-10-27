@@ -28,13 +28,29 @@ export function QuizScreen() {
         return (
           <StatusView
             icon={<ActivityIndicator size="large" color={colors.primary} />}
-            title="Getting questions ready…"
+            title={state.retryInSeconds ? 'The server is busy' : 'Getting questions ready…'}
+            message={
+              state.retryInSeconds
+                ? `Lots of people are playing! Trying again in ${state.retryInSeconds} seconds…`
+                : 'Fetching fresh Science & Nature questions.'
+            }
           />
         );
 
       case 'error':
         return (
           <StatusView icon="⚠️" title="Couldn't load the questions" message={state.message}>
+            <PrimaryButton title="Try again" onPress={restart} />
+          </StatusView>
+        );
+
+      case 'empty':
+        return (
+          <StatusView
+            icon="📭"
+            title="No questions right now"
+            message="The question server didn't send any questions this time. Please try again."
+          >
             <PrimaryButton title="Try again" onPress={restart} />
           </StatusView>
         );

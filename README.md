@@ -1,7 +1,7 @@
 # Family Trivia — Science & Nature
 
 A one-screen trivia game for family gatherings in Kuwait, built with React Native and Expo.
-Each round picks 5 random questions from a hardcoded Science & Nature bank, shows right/wrong
+Each round fetches 5 fresh Science & Nature questions from [Open Trivia DB](https://opentdb.com), shows right/wrong
 after every tap, keeps the score visible, and ends with a final score and a **Play again** button.
 
 ## Run it on your phone (Expo Go)
@@ -24,19 +24,21 @@ src/
   screens/QuizScreen.tsx     The single game screen (loading / error / playing / finished)
   components/                Reusable UI: QuestionCard, AnswerButton, ScoreBar,
                              FeedbackBanner, PrimaryButton, StatusView, ResultView, ErrorBoundary
-  hooks/useQuiz.ts           Game state machine (useReducer)
+  hooks/useQuiz.ts           Game state machine (loading / error / empty / playing / finished)
   hooks/useResponsive.ts     Screen-size helpers (font scaling, wide layouts)
-  services/questionService.ts  Async question loader with validation and shuffling
-  data/questions.ts          Hardcoded question bank
+  services/questionService.ts  Open Trivia DB client: timeout, auto-retry on "too many requests",
+                             decoding, validation, and spreading the right answer across A–D
   theme/                     Colours, spacing, radii
   types/quiz.ts              Shared TypeScript types
 ```
 
-## Adding questions or categories
+## How questions are loaded
 
-- **More questions:** append to `src/data/questions.ts` (4 options, `correctAnswer` must match one).
-  Invalid entries are filtered out automatically.
-- **New category:** add a new data file, add the category name to `Category` in
-  `src/types/quiz.ts`, and register it in `banks` in `src/services/questionService.ts`.
-- **Moving to an API later:** only `getQuestions` needs to change; the UI already handles
-  loading and error states.
+- `getQuestions` calls `https://opentdb.com/api.php?amount=5&category=17&type=multiple&encode=url3986`.
+- Open Trivia DB allows one request every 5 seconds. On "too many requests" the app shows
+  "The server is busy", waits 5 seconds and retries by itself (up to 3 times) before showing an error.
+- No internet, a slow server (10 s timeout) or a bad response shows a friendly error with **Try again**.
+- If the server returns no questions, an empty screen with **Try again** is shown.
+- **New category:** add it to `Category` in `src/types/quiz.ts` and map it to its Open Trivia DB id in
+  `categoryIds` in `src/services/questionService.ts`
+  ([category list](https://opentdb.com/api_category.php)).

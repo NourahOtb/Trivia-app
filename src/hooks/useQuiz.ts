@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
 
-import { getQuestions } from '../services/questionService';
+import { getQuestions, NoQuestionsError, QuestionLoadError } from '../services/questionService';
 import { Category, Question, QuizState } from '../types/quiz';
+import { isAbortError } from '../utils/sleep';
 
 type Action =
   | { type: 'LOAD_START' }
+  | { type: 'LOAD_RETRY'; waitSeconds: number }
   | { type: 'LOAD_SUCCESS'; questions: Question[] }
   | { type: 'LOAD_FAILURE'; message: string }
+  | { type: 'LOAD_EMPTY' }
   | { type: 'ANSWER'; answer: string }
   | { type: 'NEXT' };
 
@@ -14,6 +17,10 @@ function reducer(state: QuizState, action: Action): QuizState {
   switch (action.type) {
     case 'LOAD_START':
       return { status: 'loading' };
+    case 'LOAD_RETRY':
+      return { status: 'loading', retryInSeconds: action.waitSeconds };
+    case 'LOAD_EMPTY':
+      return { status: 'empty' };
     case 'LOAD_SUCCESS':
       return {
         status: 'playing',
@@ -58,22 +65,31 @@ export function useQuiz({ category, questionCount }: UseQuizOptions) {
   const [gameId, setGameId] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     dispatch({ type: 'LOAD_START' });
 
-    getQuestions(category, questionCount)
+    getQuestions(category, questionCount, {
+      signal: controller.signal,
+      onRetry: (waitSeconds) => dispatch({ type: 'LOAD_RETRY', waitSeconds }),
+    })
       .then((questions) => {
-        if (!cancelled) dispatch({ type: 'LOAD_SUCCESS', questions });
+        if (!controller.signal.aborted) dispatch({ type: 'LOAD_SUCCESS', questions });
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
-        const message = err instanceof Error ? err.message : 'Something went wrong.';
+        if (isAbortError(err) || controller.signal.aborted) return;
+        if (err instanceof NoQuestionsError) {
+          dispatch({ type: 'LOAD_EMPTY' });
+          return;
+        }
+        const message =
+          err instanceof QuestionLoadError
+            ? err.message
+            : 'Something went wrong getting questions. Please try again.';
         dispatch({ type: 'LOAD_FAILURE', message });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    // Cancels the request (and any retry wait) if the game restarts or the screen closes.
+    return () => controller.abort();
   }, [category, questionCount, gameId]);
 
   const answer = useCallback((value: string) => dispatch({ type: 'ANSWER', answer: value }), []);
