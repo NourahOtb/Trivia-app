@@ -6,18 +6,27 @@ import { colors, radius, spacing } from '../theme';
 interface PrimaryButtonProps {
   title: string;
   onPress: () => void;
+  /** `secondary` is an outlined button for less important actions. */
+  variant?: 'primary' | 'secondary';
 }
 
-export function PrimaryButton({ title, onPress }: PrimaryButtonProps) {
+export function PrimaryButton({ title, onPress, variant = 'primary' }: PrimaryButtonProps) {
   const { font } = useResponsive();
+  const secondary = variant === 'secondary';
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.button,
+        secondary && styles.secondary,
+        pressed && (secondary ? styles.secondaryPressed : styles.pressed),
+      ]}
     >
-      <Text style={[styles.title, { fontSize: font(18) }]}>{title}</Text>
+      <Text style={[styles.title, { fontSize: font(18) }, secondary && styles.secondaryTitle]}>
+        {title}
+      </Text>
     </Pressable>
   );
 }
@@ -35,8 +44,19 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: colors.primaryDark,
   },
+  secondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  secondaryPressed: {
+    backgroundColor: colors.primaryLight,
+  },
   title: {
     color: colors.onPrimary,
     fontWeight: '700',
+  },
+  secondaryTitle: {
+    color: colors.primary,
   },
 });

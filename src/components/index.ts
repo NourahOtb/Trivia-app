@@ -2,6 +2,8 @@ export { AnswerButton } from './AnswerButton';
 export { ErrorBoundary } from './ErrorBoundary';
 export { FeedbackBanner } from './FeedbackBanner';
 export { LifelineButton } from './LifelineButton';
+export { OptionPicker } from './OptionPicker';
+export type { PickerOption } from './OptionPicker';
 export { PrimaryButton } from './PrimaryButton';
 export { QuestionCard } from './QuestionCard';
 export { ResultView } from './ResultView';

@@ -1,27 +1,48 @@
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PrimaryButton, ResultView, ScoreBar, StartView, StatusView } from '../components';
+import {
+  OptionPicker,
+  PrimaryButton,
+  ResultView,
+  ScoreBar,
+  StartView,
+  StatusView,
+} from '../components';
+import {
+  CATEGORIES,
+  DEFAULT_CATEGORY,
+  DEFAULT_DIFFICULTY,
+  DIFFICULTIES,
+  getCategory,
+  getDifficultyLabel,
+} from '../data/gameOptions';
 import { useQuiz } from '../hooks/useQuiz';
 import { useResponsive } from '../hooks/useResponsive';
 import { colors, MAX_CONTENT_WIDTH, spacing } from '../theme';
+import { GameSettings } from '../types/quiz';
 import { PlayingView, SECONDS_PER_QUESTION } from './PlayingView';
 
 const APP_NAME = "Zwara's Trivia";
 const QUESTION_COUNT = 5;
 
 const RULES = [
-  { icon: '🔬', text: `${QUESTION_COUNT} Science & Nature questions` },
+  { icon: '❓', text: `${QUESTION_COUNT} questions per game` },
   { icon: '⏳', text: `${SECONDS_PER_QUESTION} seconds for each question` },
   { icon: '✂️', text: '50/50 once per game: removes two wrong answers' },
 ];
 
 export function QuizScreen() {
-  const { state, answer, timeUp, fiftyFifty, next, start } = useQuiz({
-    category: 'science-nature',
-    questionCount: QUESTION_COUNT,
-  });
+  const { state, settings, answer, timeUp, fiftyFifty, next, start, restart, goToStart } =
+    useQuiz({ questionCount: QUESTION_COUNT });
   const { font } = useResponsive();
+
+  // Kept here (not in StartView) so the choice is remembered when players come back.
+  const [choice, setChoice] = useState<GameSettings>({
+    categoryId: DEFAULT_CATEGORY,
+    difficulty: DEFAULT_DIFFICULTY,
+  });
 
   if (state.status === 'start') {
     return (
@@ -29,10 +50,26 @@ export function QuizScreen() {
         title={APP_NAME}
         subtitle="Family trivia for every gathering"
         rules={RULES}
-        onStart={start}
-      />
+        onStart={() => start(choice)}
+      >
+        <OptionPicker
+          title="Category"
+          options={CATEGORIES}
+          selectedId={choice.categoryId}
+          onSelect={(categoryId) => setChoice((c) => ({ ...c, categoryId }))}
+        />
+        <OptionPicker
+          title="Difficulty"
+          options={DIFFICULTIES}
+          selectedId={choice.difficulty}
+          onSelect={(difficulty) => setChoice((c) => ({ ...c, difficulty }))}
+        />
+      </StartView>
     );
   }
+
+  const category = getCategory(settings?.categoryId ?? choice.categoryId);
+  const difficultyLabel = getDifficultyLabel(settings?.difficulty ?? choice.difficulty);
 
   const renderBody = () => {
     switch (state.status) {
@@ -44,7 +81,7 @@ export function QuizScreen() {
             message={
               state.retryInSeconds
                 ? `Lots of people are playing! Trying again in ${state.retryInSeconds} seconds…`
-                : 'Fetching fresh Science & Nature questions.'
+                : `Fetching fresh ${category.label} questions.`
             }
           />
         );
@@ -52,7 +89,9 @@ export function QuizScreen() {
       case 'error':
         return (
           <StatusView icon="⚠️" title="Couldn't load the questions" message={state.message}>
-            <PrimaryButton title="Try again" onPress={start} />
+            <PrimaryButton title="Try again" onPress={restart} />
+            <View style={styles.gap} />
+            <PrimaryButton title="Back to start" variant="secondary" onPress={goToStart} />
           </StatusView>
         );
 
@@ -61,15 +100,22 @@ export function QuizScreen() {
           <StatusView
             icon="📭"
             title="No questions right now"
-            message="The question server didn't send any questions this time. Please try again."
+            message={`The server didn't send any ${category.label} questions at ${difficultyLabel} level. Try again, or pick a different category or difficulty.`}
           >
-            <PrimaryButton title="Try again" onPress={start} />
+            <PrimaryButton title="Try again" onPress={restart} />
+            <View style={styles.gap} />
+            <PrimaryButton title="Change category" variant="secondary" onPress={goToStart} />
           </StatusView>
         );
 
       case 'finished':
         return (
-          <ResultView score={state.score} total={state.questions.length} onPlayAgain={start} />
+          <ResultView
+            score={state.score}
+            total={state.questions.length}
+            onPlayAgain={restart}
+            onChangeSettings={goToStart}
+          />
         );
 
       case 'playing':
@@ -90,7 +136,9 @@ export function QuizScreen() {
       <View style={styles.column}>
         <View style={styles.header}>
           <Text style={[styles.title, { fontSize: font(26) }]}>🔮 {APP_NAME}</Text>
-          <Text style={[styles.subtitle, { fontSize: font(14) }]}>Science & Nature</Text>
+          <Text style={[styles.subtitle, { fontSize: font(14) }]}>
+            {category.icon} {category.label} · {difficultyLabel}
+          </Text>
         </View>
 
         {/* Kept outside the scroll view so the score is always visible. */}
@@ -142,5 +190,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: spacing.lg,
+  },
+  gap: {
+    height: spacing.sm + 4,
   },
 });

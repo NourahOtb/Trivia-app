@@ -1,4 +1,5 @@
-import { Category, Difficulty, Question } from '../types/quiz';
+import { getCategory } from '../data/gameOptions';
+import { Difficulty, GameSettings, Question } from '../types/quiz';
 import { shuffle, spreadPositions } from '../utils/shuffle';
 import { abortError, isAbortError, sleep } from '../utils/sleep';
 
@@ -9,11 +10,6 @@ const REQUEST_TIMEOUT_MS = 10_000;
 /** Open Trivia DB allows one request every 5 seconds per IP. */
 const RATE_LIMIT_WAIT_SECONDS = 5;
 const MAX_RATE_LIMIT_RETRIES = 3;
-
-/** Open Trivia DB category ids: https://opentdb.com/api_category.php */
-const categoryIds: Record<Category, number> = {
-  'science-nature': 17,
-};
 
 // https://opentdb.com/api_config.php
 const ResponseCode = {
@@ -58,13 +54,13 @@ interface GetQuestionsOptions {
  * Waits and retries on its own when the server says "too many requests".
  */
 export async function getQuestions(
-  category: Category,
+  settings: GameSettings,
   count: number,
   { signal, onRetry }: GetQuestionsOptions = {},
 ): Promise<Question[]> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await requestQuestions(category, count, signal);
+      return await requestQuestions(settings, count, signal);
     } catch (err) {
       if (!(err instanceof RateLimitError)) throw err;
       if (attempt >= MAX_RATE_LIMIT_RETRIES) {
@@ -79,13 +75,18 @@ export async function getQuestions(
 }
 
 async function requestQuestions(
-  category: Category,
+  settings: GameSettings,
   count: number,
   signal?: AbortSignal,
 ): Promise<Question[]> {
-  const url =
-    `${API_URL}?amount=${count}&category=${categoryIds[category]}` +
-    '&type=multiple&encode=url3986';
+  const params = [
+    `amount=${count}`,
+    `category=${getCategory(settings.categoryId).apiId}`,
+    'type=multiple',
+    'encode=url3986',
+  ];
+  if (settings.difficulty !== 'any') params.push(`difficulty=${settings.difficulty}`);
+  const url = `${API_URL}?${params.join('&')}`;
 
   const response = await fetchWithTimeout(url, signal);
 
@@ -112,7 +113,9 @@ async function requestQuestions(
       throw new QuestionLoadError('Something went wrong getting questions. Please try again.');
   }
 
-  const questions = (data.results ?? []).map(toQuestion).filter(isValid);
+  const questions = (data.results ?? [])
+    .map((item, i) => toQuestion(item, i, settings))
+    .filter(isValid);
   if (questions.length === 0) throw new NoQuestionsError();
 
   return placeCorrectAnswers(questions);
@@ -154,12 +157,12 @@ function decode(text: string): string {
   }
 }
 
-function toQuestion(item: ApiQuestion, index: number): Question {
+function toQuestion(item: ApiQuestion, index: number, settings: GameSettings): Question {
   const correctAnswer = decode(item.correct_answer);
   const difficulty = decode(item.difficulty) as Difficulty;
   return {
     id: `${Date.now()}-${index}`,
-    category: 'science-nature',
+    category: settings.categoryId,
     difficulty,
     prompt: decode(item.question),
     correctAnswer,

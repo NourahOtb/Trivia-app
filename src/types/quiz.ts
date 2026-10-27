@@ -1,10 +1,16 @@
-export type Category = 'science-nature';
+import { CategoryId, DifficultyChoice } from '../data/gameOptions';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
+/** What the players picked on the start screen. */
+export interface GameSettings {
+  categoryId: CategoryId;
+  difficulty: DifficultyChoice;
+}
+
 export interface Question {
   id: string;
-  category: Category;
+  category: CategoryId;
   difficulty?: Difficulty;
   prompt: string;
   /** Exactly four options; `correctAnswer` must be one of them. */

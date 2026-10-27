@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useResponsive } from '../hooks/useResponsive';
@@ -11,36 +12,45 @@ interface StartViewProps {
   subtitle: string;
   /** Short rules shown as a list, e.g. "5 questions". */
   rules: { icon: string; text: string }[];
+  /** Game settings, e.g. category and difficulty pickers. */
+  children?: ReactNode;
   onStart: () => void;
 }
 
-export function StartView({ title, subtitle, rules, onStart }: StartViewProps) {
+export function StartView({ title, subtitle, rules, children, onStart }: StartViewProps) {
   const { font } = useResponsive();
 
   return (
     <LinearGradient colors={gradients.hero} style={styles.fill}>
       <StatusBar style="light" />
-      <SafeAreaView style={styles.fill}>
-        <View style={styles.column}>
-          <View style={styles.hero}>
-            <View style={styles.logo}>
-              <Text style={{ fontSize: font(56) }}>🔮</Text>
-            </View>
-            <Text style={[styles.title, { fontSize: font(40) }]} accessibilityRole="header">
-              {title}
-            </Text>
-            <Text style={[styles.subtitle, { fontSize: font(17) }]}>{subtitle}</Text>
-          </View>
-
-          <View style={styles.rules}>
-            {rules.map((rule) => (
-              <View key={rule.text} style={styles.rule}>
-                <Text style={[styles.ruleIcon, { fontSize: font(20) }]}>{rule.icon}</Text>
-                <Text style={[styles.ruleText, { fontSize: font(16) }]}>{rule.text}</Text>
+      <SafeAreaView style={styles.fill} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.column}>
+            <View style={styles.hero}>
+              <View style={styles.logo}>
+                <Text style={{ fontSize: font(44) }}>🔮</Text>
               </View>
-            ))}
-          </View>
+              <Text style={[styles.title, { fontSize: font(36) }]} accessibilityRole="header">
+                {title}
+              </Text>
+              <Text style={[styles.subtitle, { fontSize: font(16) }]}>{subtitle}</Text>
+            </View>
 
+            {children}
+
+            <View style={styles.rules}>
+              {rules.map((rule) => (
+                <View key={rule.text} style={styles.rule}>
+                  <Text style={[styles.ruleIcon, { fontSize: font(16) }]}>{rule.icon}</Text>
+                  <Text style={[styles.ruleText, { fontSize: font(14) }]}>{rule.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Pinned to the bottom so Start is always in reach, even while scrolling the pickers. */}
+        <SafeAreaView edges={['bottom']} style={styles.footer}>
           <Pressable
             accessibilityRole="button"
             onPress={onStart}
@@ -48,7 +58,7 @@ export function StartView({ title, subtitle, rules, onStart }: StartViewProps) {
           >
             <Text style={[styles.startText, { fontSize: font(22) }]}>Start</Text>
           </Pressable>
-        </View>
+        </SafeAreaView>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -58,22 +68,25 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
+  scroll: {
+    flexGrow: 1,
+  },
   column: {
-    flex: 1,
+    flexGrow: 1,
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
-    gap: spacing.xl,
+    gap: spacing.lg,
   },
   hero: {
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   logo: {
-    width: 112,
-    height: 112,
+    width: 84,
+    height: 84,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 2,
@@ -97,21 +110,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: radius.lg,
     padding: spacing.md,
-    gap: spacing.sm + 4,
+    gap: spacing.sm,
   },
   rule: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm + 4,
   },
   ruleIcon: {
-    width: 28,
+    width: 24,
     textAlign: 'center',
   },
   ruleText: {
     flex: 1,
     color: colors.onPrimary,
     fontWeight: '600',
+  },
+  footer: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
   start: {
     backgroundColor: colors.accent,

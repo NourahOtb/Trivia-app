@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
 
 import { getQuestions, NoQuestionsError, QuestionLoadError } from '../services/questionService';
-import { Category, PlayingState, Question, QuizState } from '../types/quiz';
+import { GameSettings, PlayingState, Question, QuizState } from '../types/quiz';
 import { shuffle } from '../utils/shuffle';
 import { isAbortError } from '../utils/sleep';
 
@@ -9,6 +9,7 @@ import { isAbortError } from '../utils/sleep';
 const TIMEOUT_ADVANCE_MS = 2500;
 
 type Action =
+  | { type: 'GO_TO_START' }
   | { type: 'LOAD_START' }
   | { type: 'LOAD_RETRY'; waitSeconds: number }
   | { type: 'LOAD_SUCCESS'; questions: Question[] }
@@ -25,6 +26,8 @@ export function isAnswered(state: PlayingState): boolean {
 
 function reducer(state: QuizState, action: Action): QuizState {
   switch (action.type) {
+    case 'GO_TO_START':
+      return { status: 'start' };
     case 'LOAD_START':
       return { status: 'loading' };
     case 'LOAD_RETRY':
@@ -82,22 +85,27 @@ function reducer(state: QuizState, action: Action): QuizState {
 }
 
 interface UseQuizOptions {
-  category: Category;
   questionCount: number;
 }
 
-export function useQuiz({ category, questionCount }: UseQuizOptions) {
+interface Game {
+  /** Bumped on every Start / Play again / Try again so the same settings reload. */
+  id: number;
+  settings: GameSettings;
+}
+
+export function useQuiz({ questionCount }: UseQuizOptions) {
   const [state, dispatch] = useReducer(reducer, { status: 'start' });
-  // 0 = start screen. Bumping it loads a new game (Start / Play again / Try again).
-  const [gameId, setGameId] = useState(0);
+  // null = still on the start screen.
+  const [game, setGame] = useState<Game | null>(null);
 
   useEffect(() => {
-    if (gameId === 0) return;
+    if (!game) return;
 
     const controller = new AbortController();
     dispatch({ type: 'LOAD_START' });
 
-    getQuestions(category, questionCount, {
+    getQuestions(game.settings, questionCount, {
       signal: controller.signal,
       onRetry: (waitSeconds) => dispatch({ type: 'LOAD_RETRY', waitSeconds }),
     })
@@ -119,7 +127,7 @@ export function useQuiz({ category, questionCount }: UseQuizOptions) {
 
     // Cancels the request (and any retry wait) if the game restarts or the screen closes.
     return () => controller.abort();
-  }, [category, questionCount, gameId]);
+  }, [game, questionCount]);
 
   // After time runs out, show the right answer briefly, then move on by itself.
   const timedOutIndex = state.status === 'playing' && state.timedOut ? state.index : null;
@@ -133,7 +141,27 @@ export function useQuiz({ category, questionCount }: UseQuizOptions) {
   const timeUp = useCallback(() => dispatch({ type: 'TIME_UP' }), []);
   const fiftyFifty = useCallback(() => dispatch({ type: 'FIFTY_FIFTY' }), []);
   const next = useCallback(() => dispatch({ type: 'NEXT' }), []);
-  const start = useCallback(() => setGameId((id) => id + 1), []);
+  /** Starts a game with new settings (from the start screen). */
+  const start = useCallback(
+    (settings: GameSettings) => setGame((g) => ({ id: (g?.id ?? 0) + 1, settings })),
+    [],
+  );
+  /** Starts another game with the same settings (Play again / Try again). */
+  const restart = useCallback(() => setGame((g) => (g ? { ...g, id: g.id + 1 } : g)), []);
+  const goToStart = useCallback(() => {
+    setGame(null);
+    dispatch({ type: 'GO_TO_START' });
+  }, []);
 
-  return { state, answer, timeUp, fiftyFifty, next, start };
+  return {
+    state,
+    settings: game?.settings ?? null,
+    answer,
+    timeUp,
+    fiftyFifty,
+    next,
+    start,
+    restart,
+    goToStart,
+  };
 }

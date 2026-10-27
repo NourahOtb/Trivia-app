@@ -1,7 +1,8 @@
-# Zwara's Trivia — Science & Nature
+# Zwara's Trivia
 
 A one-screen trivia game for family gatherings in Kuwait, built with React Native and Expo.
-Each round fetches 5 fresh Science & Nature questions from [Open Trivia DB](https://opentdb.com), shows right/wrong
+Players pick a category (12 to choose from) and a difficulty on the start screen, then each round fetches
+5 fresh questions from [Open Trivia DB](https://opentdb.com), shows right/wrong
 after every tap, keeps the score visible, and ends with a final score and a **Play again** button.
 It opens on a purple start screen, gives 15 seconds per question (running out counts as wrong and moves on),
 and offers one 50/50 per game that removes two wrong answers.
@@ -25,7 +26,8 @@ App.tsx                      Root: safe-area provider + error boundary
 src/
   screens/QuizScreen.tsx     The game screen (start / loading / error / empty / playing / finished)
   screens/PlayingView.tsx    One question: timer, 50/50, answers, feedback
-  components/                Reusable UI: StartView, QuestionCard, AnswerButton, ScoreBar, TimerBar,
+  data/gameOptions.ts        Categories and difficulties offered on the start screen
+  components/                Reusable UI: StartView, OptionPicker, QuestionCard, AnswerButton, ScoreBar, TimerBar,
                              LifelineButton, FeedbackBanner, PrimaryButton, StatusView, ResultView,
                              ErrorBoundary
   hooks/useQuiz.ts           Game state machine (loading / error / empty / playing / finished)
@@ -39,11 +41,11 @@ src/
 
 ## How questions are loaded
 
-- `getQuestions` calls `https://opentdb.com/api.php?amount=5&category=17&type=multiple&encode=url3986`.
+- `getQuestions` calls `https://opentdb.com/api.php?amount=5&category=<id>&type=multiple&encode=url3986`,
+  adding `&difficulty=easy|medium|hard` unless "Mixed" is chosen.
 - Open Trivia DB allows one request every 5 seconds. On "too many requests" the app shows
   "The server is busy", waits 5 seconds and retries by itself (up to 3 times) before showing an error.
 - No internet, a slow server (10 s timeout) or a bad response shows a friendly error with **Try again**.
 - If the server returns no questions, an empty screen with **Try again** is shown.
-- **New category:** add it to `Category` in `src/types/quiz.ts` and map it to its Open Trivia DB id in
-  `categoryIds` in `src/services/questionService.ts`
-  ([category list](https://opentdb.com/api_category.php)).
+- **New category:** add one row to `CATEGORIES` in `src/data/gameOptions.ts` with its Open Trivia DB id
+  ([category list](https://opentdb.com/api_category.php)). It shows up in the picker automatically.
