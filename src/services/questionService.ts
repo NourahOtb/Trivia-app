@@ -1,11 +1,23 @@
-import { getCategory } from '../data/gameOptions';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+import { getApiId } from '../data/gameOptions';
 import { Difficulty, GameSettings, Question } from '../types/quiz';
 import { shuffle, spreadPositions } from '../utils/shuffle';
 import { abortError, isAbortError, sleep } from '../utils/sleep';
 
 const API_URL = 'https://opentdb.com/api.php';
+/**
+ * Our Vercel function that asks OpenRouter for questions about the players' own topic.
+ * Full address (not "/api/questions") so the phone app can reach it too.
+ */
+const LIVE_AI_API_URL = 'https://trivia-website-eta.vercel.app/api/questions';
+/** Port of `npm run dev:api` (scripts/dev-api.mts). */
+const DEV_AI_API_PORT = 3001;
 const OPTIONS_PER_QUESTION = 4;
 const REQUEST_TIMEOUT_MS = 10_000;
+/** Writing questions takes the AI longer than looking them up. */
+const AI_REQUEST_TIMEOUT_MS = 30_000;
 
 /** Open Trivia DB allows one request every 5 seconds per IP. */
 const RATE_LIMIT_WAIT_SECONDS = 5;
@@ -35,6 +47,12 @@ interface ApiResponse {
   results?: ApiQuestion[];
 }
 
+/** See api/questions.ts. Answers are plain text, not URL-encoded. */
+interface AiResponse {
+  questions?: ApiQuestion[];
+  error?: string;
+}
+
 /** A friendly message is shown to the player for any of these. */
 export class QuestionLoadError extends Error {}
 
@@ -50,17 +68,21 @@ interface GetQuestionsOptions {
 }
 
 /**
- * Fetches a fresh set of multiple-choice questions from Open Trivia DB.
- * Waits and retries on its own when the server says "too many requests".
+ * Fetches a fresh set of multiple-choice questions: from Open Trivia DB, or written by AI
+ * when the players chose "Your own topic".
+ * Waits and retries on its own when Open Trivia DB says "too many requests".
  */
 export async function getQuestions(
   settings: GameSettings,
   count: number,
   { signal, onRetry }: GetQuestionsOptions = {},
 ): Promise<Question[]> {
+  const apiId = getApiId(settings.categoryId);
+  if (apiId === null) return requestAiQuestions(settings, count, signal);
+
   for (let attempt = 0; ; attempt++) {
     try {
-      return await requestQuestions(settings, count, signal);
+      return await requestQuestions(settings, apiId, count, signal);
     } catch (err) {
       if (!(err instanceof RateLimitError)) throw err;
       if (attempt >= MAX_RATE_LIMIT_RETRIES) {
@@ -76,12 +98,13 @@ export async function getQuestions(
 
 async function requestQuestions(
   settings: GameSettings,
+  apiId: number,
   count: number,
   signal?: AbortSignal,
 ): Promise<Question[]> {
   const params = [
     `amount=${count}`,
-    `category=${getCategory(settings.categoryId).apiId}`,
+    `category=${apiId}`,
     'type=multiple',
     'encode=url3986',
   ];
@@ -114,14 +137,79 @@ async function requestQuestions(
   }
 
   const questions = (data.results ?? [])
-    .map((item, i) => toQuestion(item, i, settings))
+    .map((item, i) => toQuestion(item, i, settings, decode))
     .filter(isValid);
   if (questions.length === 0) throw new NoQuestionsError();
 
   return placeCorrectAnswers(questions);
 }
 
-async function fetchWithTimeout(url: string, signal?: AbortSignal): Promise<Response> {
+/**
+ * While developing (`npx expo start`), use `npm run dev:api` on this computer, which reads the key
+ * from .env.local. Built apps and the website always use the live Vercel function.
+ */
+function getAiApiUrl(): string {
+  if (!__DEV__) return LIVE_AI_API_URL;
+  // On a phone, "localhost" is the phone itself, so use the computer's address that Expo connected to.
+  const host =
+    Platform.OS === 'web'
+      ? window.location.hostname
+      : Constants.expoConfig?.hostUri?.split(':')[0];
+  return host ? `http://${host}:${DEV_AI_API_PORT}/api/questions` : LIVE_AI_API_URL;
+}
+
+async function requestAiQuestions(
+  settings: GameSettings,
+  count: number,
+  signal?: AbortSignal,
+): Promise<Question[]> {
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      getAiApiUrl(),
+      signal,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: settings.customTopic, difficulty: settings.difficulty }),
+      },
+      AI_REQUEST_TIMEOUT_MS,
+    );
+  } catch (err) {
+    if (__DEV__ && err instanceof QuestionLoadError) {
+      throw new QuestionLoadError(
+        `${err.message}\n\nDeveloping? Start the AI server with "npm run dev:api" in another terminal.`,
+      );
+    }
+    throw err;
+  }
+
+  let data: AiResponse;
+  try {
+    data = await response.json();
+  } catch {
+    throw new QuestionLoadError('The AI sent something unexpected. Please try again.');
+  }
+  if (!response.ok) {
+    // The function's error messages are written for players.
+    throw new QuestionLoadError(data.error ?? 'The AI had a problem. Please try again.');
+  }
+
+  const questions = (data.questions ?? [])
+    .slice(0, count)
+    .map((item, i) => toQuestion(item, i, settings, (text) => text.trim()))
+    .filter(isValid);
+  if (questions.length === 0) throw new NoQuestionsError();
+
+  return placeCorrectAnswers(questions);
+}
+
+async function fetchWithTimeout(
+  url: string,
+  signal?: AbortSignal,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
   if (signal?.aborted) throw abortError();
 
   const controller = new AbortController();
@@ -129,12 +217,12 @@ async function fetchWithTimeout(url: string, signal?: AbortSignal): Promise<Resp
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, timeoutMs);
   const onAbort = () => controller.abort();
   signal?.addEventListener('abort', onAbort, { once: true });
 
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal });
   } catch (err) {
     if (timedOut) {
       throw new QuestionLoadError('The question server took too long to answer. Please try again.');
@@ -157,16 +245,21 @@ function decode(text: string): string {
   }
 }
 
-function toQuestion(item: ApiQuestion, index: number, settings: GameSettings): Question {
-  const correctAnswer = decode(item.correct_answer);
-  const difficulty = decode(item.difficulty) as Difficulty;
+function toQuestion(
+  item: ApiQuestion,
+  index: number,
+  settings: GameSettings,
+  readText: (text: string) => string,
+): Question {
+  const correctAnswer = readText(item.correct_answer);
+  const difficulty = readText(item.difficulty) as Difficulty;
   return {
     id: `${Date.now()}-${index}`,
     category: settings.categoryId,
     difficulty,
-    prompt: decode(item.question),
+    prompt: readText(item.question),
     correctAnswer,
-    options: [correctAnswer, ...item.incorrect_answers.map(decode)],
+    options: [correctAnswer, ...item.incorrect_answers.map(readText)],
   };
 }
 

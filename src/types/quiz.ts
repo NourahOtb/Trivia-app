@@ -6,6 +6,8 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 export interface GameSettings {
   categoryId: CategoryId;
   difficulty: DifficultyChoice;
+  /** What the players typed when they chose "Your own topic". */
+  customTopic: string;
 }
 
 export interface Question {

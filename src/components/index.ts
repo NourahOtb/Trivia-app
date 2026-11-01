@@ -11,3 +11,4 @@ export { ScoreBar } from './ScoreBar';
 export { StartView } from './StartView';
 export { StatusView } from './StatusView';
 export { TimerBar } from './TimerBar';
+export { TopicInput } from './TopicInput';

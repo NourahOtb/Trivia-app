@@ -9,14 +9,17 @@ import {
   ScoreBar,
   StartView,
   StatusView,
+  TopicInput,
 } from '../components';
 import {
-  CATEGORIES,
+  CATEGORY_CHOICES,
+  CUSTOM_CATEGORY,
   DEFAULT_CATEGORY,
   DEFAULT_DIFFICULTY,
   DIFFICULTIES,
   getCategory,
   getDifficultyLabel,
+  MAX_TOPIC_LENGTH,
 } from '../data/gameOptions';
 import { useQuiz } from '../hooks/useQuiz';
 import { useResponsive } from '../hooks/useResponsive';
@@ -42,7 +45,19 @@ export function QuizScreen() {
   const [choice, setChoice] = useState<GameSettings>({
     categoryId: DEFAULT_CATEGORY,
     difficulty: DEFAULT_DIFFICULTY,
+    customTopic: '',
   });
+  const [topicError, setTopicError] = useState<string>();
+  const isCustom = choice.categoryId === CUSTOM_CATEGORY.id;
+
+  const onStart = () => {
+    const customTopic = choice.customTopic.trim();
+    if (isCustom && !customTopic) {
+      setTopicError('Type a topic first, then press Start.');
+      return;
+    }
+    start({ ...choice, customTopic });
+  };
 
   if (state.status === 'start') {
     return (
@@ -50,14 +65,29 @@ export function QuizScreen() {
         title={APP_NAME}
         subtitle="Family trivia for every gathering"
         rules={RULES}
-        onStart={() => start(choice)}
+        onStart={onStart}
       >
         <OptionPicker
           title="Category"
-          options={CATEGORIES}
+          options={CATEGORY_CHOICES}
           selectedId={choice.categoryId}
-          onSelect={(categoryId) => setChoice((c) => ({ ...c, categoryId }))}
+          onSelect={(categoryId) => {
+            setChoice((c) => ({ ...c, categoryId }));
+            setTopicError(undefined);
+          }}
         />
+        {isCustom && (
+          <TopicInput
+            value={choice.customTopic}
+            onChangeText={(customTopic) => {
+              setChoice((c) => ({ ...c, customTopic }));
+              setTopicError(undefined);
+            }}
+            onSubmit={onStart}
+            maxLength={MAX_TOPIC_LENGTH}
+            error={topicError}
+          />
+        )}
         <OptionPicker
           title="Difficulty"
           options={DIFFICULTIES}
@@ -69,8 +99,12 @@ export function QuizScreen() {
     );
   }
 
-  const category = getCategory(settings?.categoryId ?? choice.categoryId);
-  const difficultyLabel = getDifficultyLabel(settings?.difficulty ?? choice.difficulty);
+  const played = settings ?? choice;
+  const category = getCategory(played.categoryId);
+  const playedCustom = played.categoryId === CUSTOM_CATEGORY.id;
+  // For "Your own topic", show what the players typed instead of the category name.
+  const categoryLabel = playedCustom ? played.customTopic : category.label;
+  const difficultyLabel = getDifficultyLabel(played.difficulty);
 
   const renderBody = () => {
     switch (state.status) {
@@ -82,7 +116,9 @@ export function QuizScreen() {
             message={
               state.retryInSeconds
                 ? `Lots of people are playing! Trying again in ${state.retryInSeconds} seconds…`
-                : `Fetching fresh ${category.label} questions.`
+                : playedCustom
+                  ? `AI is writing questions about “${categoryLabel}”. This can take a few seconds.`
+                  : `Fetching fresh ${categoryLabel} questions.`
             }
           />
         );
@@ -101,11 +137,19 @@ export function QuizScreen() {
           <StatusView
             icon="📭"
             title="No questions right now"
-            message={`The server didn't send any ${category.label} questions at ${difficultyLabel} level. Try again, or pick a different category or difficulty.`}
+            message={
+              playedCustom
+                ? `The AI couldn't write questions about “${categoryLabel}”. Try again, or try a different topic.`
+                : `The server didn't send any ${categoryLabel} questions at ${difficultyLabel} level. Try again, or pick a different category or difficulty.`
+            }
           >
             <PrimaryButton title="Try again" onPress={restart} />
             <View style={styles.gap} />
-            <PrimaryButton title="Change category" variant="secondary" onPress={goToStart} />
+            <PrimaryButton
+              title={playedCustom ? 'Change topic' : 'Change category'}
+              variant="secondary"
+              onPress={goToStart}
+            />
           </StatusView>
         );
 
@@ -138,7 +182,7 @@ export function QuizScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { fontSize: font(26) }]}>🔮 {APP_NAME}</Text>
           <Text style={[styles.subtitle, { fontSize: font(14) }]}>
-            {category.icon} {category.label} · {difficultyLabel}
+            {category.icon} {categoryLabel} · {difficultyLabel}
           </Text>
         </View>
 
